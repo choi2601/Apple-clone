@@ -2,6 +2,7 @@
   let yOffset = 0;
   let prevScrollHeight = 0;
   let currnetScene = 0;
+  let enterNewScene = false;
 
   const sceneInfo = [
     {
@@ -17,7 +18,8 @@
         messageD: document.querySelector("#scroll-section-0 .main-message.d"),
       },
       values: {
-        messageA_opacity: [0, 1],
+        messageA_opacity: [0, 1, { start: 0.1, end: 0.2 }],
+        messageB_opacity: [0, 1, { start: 0.3, end: 0.4 }],
       },
     },
     {
@@ -69,9 +71,24 @@
   }
   function calcValues(values, currentYOffset) {
     let rv;
-    let scrollRatio = currentYOffset / sceneInfo[currnetScene].scrollHeight;
+    const scrollHeight = sceneInfo[currnetScene].scrollHeight;
+    const scrollRatio = currentYOffset / scrollHeight;
 
-    rv = scrollRatio * (values[1] - values[0] + values[0]);
+    if (values.length === 3) {
+      const partScrollStart = values[2].start * scrollHeight;
+      const partScrollEnd = values[2].end * scrollHeight;
+      const partScrollHeight = partScrollEnd - partScrollStart;
+
+      if (currentYOffset >= partScrollStart && currentYOffset <= partScrollEnd)
+        rv =
+          ((currentYOffset - partScrollStart) / partScrollHeight) *
+          (values[1] - values[0] + values[0]);
+    } else if (currentYOffset < partScrollStart) {
+      rv = values[0];
+    } else if (currentYOffset > partScrollEnd) {
+      rv = values[1];
+    }
+
     return rv;
   }
   function playAnimation() {
@@ -95,19 +112,24 @@
     }
   }
   function scrollLoop() {
+    enterNewScene = false;
     prevScrollHeight = 0;
     for (let i = 0; i < currnetScene; i++) {
       prevScrollHeight += sceneInfo[i].scrollHeight;
     }
 
     if (yOffset >= prevScrollHeight + sceneInfo[currnetScene].scrollHeight) {
+      enterNewScene = true;
       currnetScene++;
       document.body.setAttribute("id", `show-scene-${currnetScene}`);
     } else if (yOffset < prevScrollHeight) {
+      enterNewScene = true;
       if (currnetScene === 0) return;
       currnetScene--;
       document.body.setAttribute("id", `show-scene-${currnetScene}`);
     }
+    if (enterNewScene) return;
+
     playAnimation();
   }
 
