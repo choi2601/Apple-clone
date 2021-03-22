@@ -18,8 +18,11 @@
         messageD: document.querySelector("#scroll-section-0 .main-message.d"),
       },
       values: {
-        messageA_opacity: [0, 1, { start: 0.1, end: 0.2 }],
-        messageB_opacity: [0, 1, { start: 0.3, end: 0.4 }],
+        messageA_opacity_in: [0, 1, { start: 0.1, end: 0.2 }],
+        // messageB_opacity_in: [0, 1, { start: 0.3, end: 0.4 }],
+        messageA_translateY_in: [20, 0, { start: 0.1, end: 0.2 }],
+        messageA_opacity_out: [1, 0, { start: 0.25, end: 0.3 }],
+        messageA_translateY_out: [0, -20, { start: 0.25, end: 0.3 }],
       },
     },
     {
@@ -79,14 +82,21 @@
       const partScrollEnd = values[2].end * scrollHeight;
       const partScrollHeight = partScrollEnd - partScrollStart;
 
-      if (currentYOffset >= partScrollStart && currentYOffset <= partScrollEnd)
+      if (
+        currentYOffset >= partScrollStart &&
+        currentYOffset <= partScrollEnd
+      ) {
         rv =
           ((currentYOffset - partScrollStart) / partScrollHeight) *
-          (values[1] - values[0] + values[0]);
-    } else if (currentYOffset < partScrollStart) {
-      rv = values[0];
-    } else if (currentYOffset > partScrollEnd) {
-      rv = values[1];
+            (values[1] - values[0]) +
+          values[0];
+      } else if (currentYOffset < partScrollStart) {
+        rv = values[0];
+      } else if (currentYOffset > partScrollEnd) {
+        rv = values[1];
+      } else {
+        rv = scrollRatio * (values[1] - values[0]) + values[0];
+      }
     }
 
     return rv;
@@ -95,13 +105,35 @@
     const objs = sceneInfo[currnetScene].objs;
     const values = sceneInfo[currnetScene].values;
     const currentYOffset = yOffset - prevScrollHeight;
+    const scrollHeight = sceneInfo[currnetScene].scrollHeight;
+    const scrollRatio = currentYOffset / scrollHeight;
+
     switch (currnetScene) {
       case 0:
         let messageA_opacity_in = calcValues(
-          values.messageA_opacity,
+          values.messageA_opacity_in,
           currentYOffset
         );
-        objs.messageA.style.opacity = messageA_opacity_in;
+        let messageA_opacity_out = calcValues(
+          values.messageA_opacity_out,
+          currentYOffset
+        );
+        let messageA_translateY_in = calcValues(
+          values.messageA_translateY_in,
+          currentYOffset
+        );
+        let messageA_translateY_out = calcValues(
+          values.messageA_translateY_out,
+          currentYOffset
+        );
+        if (scrollRatio <= 0.22) {
+          objs.messageA.style.opacity = messageA_opacity_in;
+          objs.messageA.style.transform = `translateY(${messageA_translateY_in}%)`;
+        } else {
+          objs.messageA.style.opacity = messageA_opacity_out;
+          objs.messageA.style.transform = `translateY(${messageA_translateY_out}%)`;
+        }
+
         break;
       case 1:
         break;
@@ -118,7 +150,7 @@
       prevScrollHeight += sceneInfo[i].scrollHeight;
     }
 
-    if (yOffset >= prevScrollHeight + sceneInfo[currnetScene].scrollHeight) {
+    if (yOffset > prevScrollHeight + sceneInfo[currnetScene].scrollHeight) {
       enterNewScene = true;
       currnetScene++;
       document.body.setAttribute("id", `show-scene-${currnetScene}`);
