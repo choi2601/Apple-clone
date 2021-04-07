@@ -141,8 +141,6 @@
     }
   }
 
-  setCanvasImages();
-
   function checkMenu() {
     if (yOffset > 44) {
       document.body.classList.add("local-nav-sticky");
@@ -640,8 +638,21 @@
     }
   });
   window.addEventListener("load", () => {
+    document.body.classList.remove("before-load");
     setLayout();
     sceneInfo[0].objs.context.drawImage(sceneInfo[0].objs.videoImages[0], 0, 0);
   });
-  window.addEventListener("resize", setLayout);
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 600) {
+      setLayout();
+    }
+    sceneInfo[3].values.rectStartY = 0;
+  });
+
+  window.addEventListener("orientationchange", setLayout);
+  document.querySelector(".loading").addEventListener("transitionend", (e) => {
+    document.body.removeChild(e.currentTarget);
+  });
+
+  setCanvasImages();
 })();
