@@ -96,7 +96,7 @@
     {
       //3
       type: "sticky",
-      heightNum: 6,
+      heightNum: 5,
       scrollHeight: 0,
       objs: {
         container: document.querySelector("#scroll-section-3"),
@@ -154,7 +154,8 @@
       if (sceneInfo[i].type === "sticky") {
         sceneInfo[i].scrollHeight = sceneInfo[i].heightNum * window.innerHeight;
       } else if (sceneInfo[i].type === "normal") {
-        sceneInfo[i].scrollHeight = sceneInfo[i].objs.container.offsetHeight;
+        sceneInfo[i].scrollHeight =
+          sceneInfo[i].objs.container.offsetHeight + window.innerHeight * 0.5;
       }
       sceneInfo[
         i
@@ -164,7 +165,7 @@
     let totalScrollHeight = 0;
     for (let i = 0; i < sceneInfo.length; i++) {
       totalScrollHeight += sceneInfo[i].scrollHeight;
-      if (totalScrollHeight >= pageYOffset) {
+      if (totalScrollHeight >= yOffset) {
         currentScene = i;
         break;
       }
@@ -452,14 +453,15 @@
         break;
       case 3:
         let step = 0;
-
         const widthRatio = window.innerWidth / objs.canvas.width;
         const heightRatio = window.innerHeight / objs.canvas.height;
         let canvasScaleRatio;
 
         if (widthRatio <= heightRatio) {
+          // 캔버스보다 브라우저 창이 홀쭉한 경우
           canvasScaleRatio = heightRatio;
         } else {
+          // 캔버스보다 브라우저 창이 납작한 경우
           canvasScaleRatio = widthRatio;
         }
 
@@ -472,7 +474,6 @@
         const recalculatedInnerHeight = window.innerHeight / canvasScaleRatio;
 
         if (!values.rectStartY) {
-          // values.rectStartY = objs.canvas.getBoundingClientRect().top;
           values.rectStartY =
             objs.canvas.offsetTop +
             (objs.canvas.height - objs.canvas.height * canvasScaleRatio) / 2;
@@ -489,6 +490,7 @@
           values.rect1X[0] + recalculatedInnerWidth - whiteRectWidth;
         values.rect2X[1] = values.rect2X[0] + whiteRectWidth;
 
+        // 좌우 흰색 박스 그리기
         objs.context.fillRect(
           parseInt(calcValues(values.rect1X, currentYOffset)),
           0,
@@ -511,7 +513,6 @@
           values.blendHeight[1] = objs.canvas.height;
           values.blendHeight[2].start = values.rect1X[2].end;
           values.blendHeight[2].end = values.blendHeight[2].start + 0.2;
-
           const blendHeight = calcValues(values.blendHeight, currentYOffset);
 
           objs.context.drawImage(
@@ -534,7 +535,7 @@
           if (scrollRatio > values.blendHeight[2].end) {
             values.canvas_scale[0] = canvasScaleRatio;
             values.canvas_scale[1] =
-              document.body.offsetWidth / (objs.canvas.width * 1.5);
+              document.body.offsetWidth / (1.5 * objs.canvas.width);
             values.canvas_scale[2].start = values.blendHeight[2].end;
             values.canvas_scale[2].end = values.canvas_scale[2].start + 0.2;
 
@@ -544,6 +545,7 @@
             )})`;
             objs.canvas.style.marginTop = 0;
           }
+
           if (
             scrollRatio > values.canvas_scale[2].end &&
             values.canvas_scale[2].end > 0
@@ -554,12 +556,10 @@
             values.canvasCaption_opacity[2].start = values.canvas_scale[2].end;
             values.canvasCaption_opacity[2].end =
               values.canvasCaption_opacity[2].start + 0.1;
-
             values.canvasCaption_translateY[2].start =
-              values.canvas_scale[2].end;
+              values.canvasCaption_opacity[2].start;
             values.canvasCaption_translateY[2].end =
-              values.canvasCaption_translateY[2].start + 0.1;
-
+              values.canvasCaption_opacity[2].end;
             objs.canvasCaption.style.opacity = calcValues(
               values.canvasCaption_opacity,
               currentYOffset
@@ -568,6 +568,8 @@
               values.canvasCaption_translateY,
               currentYOffset
             )}%, 0)`;
+          } else {
+            objs.canvasCaption.style.opacity = values.canvasCaption_opacity[0];
           }
         }
 
@@ -577,16 +579,28 @@
   function scrollLoop() {
     enterNewScene = false;
     prevScrollHeight = 0;
+
     for (let i = 0; i < currentScene; i++) {
       prevScrollHeight += sceneInfo[i].scrollHeight;
     }
 
     if (
+      delayedYoffset <
+      prevScrollHeight + sceneInfo[currentScene].scrollHeight
+    ) {
+      document.body.classList.remove("scroll-effect-end");
+    }
+    if (
       delayedYoffset >
       prevScrollHeight + sceneInfo[currentScene].scrollHeight
     ) {
       enterNewScene = true;
-      currentScene++;
+      if (currentScene === sceneInfo.length - 1) {
+        document.body.classList.add("scroll-effect-end");
+      }
+      if (currentScene < sceneInfo.length - 1) {
+        currentScene++;
+      }
       document.body.setAttribute("id", `show-scene-${currentScene}`);
     }
 
@@ -627,31 +641,54 @@
     }
   }
 
-  window.addEventListener("scroll", () => {
-    yOffset = window.pageYOffset;
-    scrollLoop();
-    checkMenu();
-
-    if (!rafState) {
-      rafId = requestAnimationFrame(loop);
-      rafState = true;
-    }
-  });
   window.addEventListener("load", () => {
     document.body.classList.remove("before-load");
     setLayout();
     sceneInfo[0].objs.context.drawImage(sceneInfo[0].objs.videoImages[0], 0, 0);
-  });
-  window.addEventListener("resize", () => {
-    if (window.innerWidth > 600) {
-      setLayout();
-    }
-    sceneInfo[3].values.rectStartY = 0;
-  });
 
-  window.addEventListener("orientationchange", setLayout);
-  document.querySelector(".loading").addEventListener("transitionend", (e) => {
-    document.body.removeChild(e.currentTarget);
+    let tempYOffset = yOffset;
+    let tempScrollCount = 0;
+
+    if (yOffset > 0) {
+      let siId = setInterval(() => {
+        window.scrollTo(0, tempYOffset);
+        tempYOffset += 5;
+
+        if (tempScrollCount > 20) {
+          clearInterval(siId);
+        }
+        tempScrollCount++;
+      }, 20);
+    }
+
+    window.addEventListener("scroll", () => {
+      yOffset = window.pageYOffset;
+      scrollLoop();
+      checkMenu();
+
+      if (!rafState) {
+        rafId = requestAnimationFrame(loop);
+        rafState = true;
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 900) {
+        window.location.reload();
+      }
+    });
+
+    window.addEventListener("orientationchange", () => {
+      scrollTo(0, 0);
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    });
+    document
+      .querySelector(".loading")
+      .addEventListener("transitionend", (e) => {
+        document.body.removeChild(e.currentTarget);
+      });
   });
 
   setCanvasImages();
